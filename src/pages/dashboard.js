@@ -23,9 +23,9 @@ const PatientDashboard = () => {
   const mainActions = [
     {
       title: "Start Consultation",
-      description: "Begin a new health check",
+      description: "Chat with Chiremba",
       icon: "👨‍⚕️",
-      link: "/medicaldata/activecomplaint",
+      link: "/chatbot",
       color: "bg-gradient-to-r from-blue-500 to-cyan-500"
     },
     {

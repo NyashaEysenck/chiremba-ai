@@ -14,6 +14,8 @@ export default function ModelGarden() {
   const [aiLoading, setAiLoading] = useState(false);
   const [useCamera, setUseCamera] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
+  const [availableCameras, setAvailableCameras] = useState([]); // List of available cameras
+  const [selectedCameraId, setSelectedCameraId] = useState(""); // Selected camera ID
   const videoRef = useRef(null);
   const mediaStreamRef = useRef(null);
 
@@ -26,17 +28,39 @@ export default function ModelGarden() {
     { name: "Diabetic Retinopathy", endpoint: "https://api-inference.huggingface.co/models/retina" },
   ];
 
+  // Fetch available cameras
+  useEffect(() => {
+    const fetchCameras = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cameras = devices.filter(device => device.kind === "videoinput");
+        setAvailableCameras(cameras);
+        if (cameras.length > 0) {
+          setSelectedCameraId(cameras[0].deviceId); // Default to the first camera
+        }
+      } catch (err) {
+        console.error("Error fetching cameras:", err);
+      }
+    };
+
+    fetchCameras();
+  }, []);
+
+  // Start/stop camera based on `useCamera` state
   useEffect(() => {
     if (useCamera) {
-      startCamera();
+      startCamera(selectedCameraId);
     } else {
       stopCamera();
     }
-  }, [useCamera]);
+  }, [useCamera, selectedCameraId]);
 
-  const startCamera = async () => {
+  const startCamera = async (cameraId) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const constraints = {
+        video: { deviceId: cameraId ? { exact: cameraId } : undefined },
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       mediaStreamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -54,6 +78,10 @@ export default function ModelGarden() {
       mediaStreamRef.current = null;
       setCameraActive(false);
     }
+  };
+
+  const handleCameraChange = (event) => {
+    setSelectedCameraId(event.target.value);
   };
 
   const captureImage = () => {
@@ -134,7 +162,7 @@ export default function ModelGarden() {
 
     const prompt = tab === "Interpretation" 
       ? `Assume role of Specialist AI Doctor, explain the disease and provide an interpretation for the diagnostic result: ${results.class} with ${results.confidence} confidence in short, patient-friendly way.`
-      : `Assume role of Specialist AI Doctor, provide an consultation advise for the diagnostic result: ${results.class} with ${results.confidence} confidence in short, patient-friendly way. Donot prescribe any drug, only ayurvedic or home remedies. If severe, make them consult specialist doctor.`;
+      : `Assume role of Specialist AI Doctor, provide an consultation advise for the diagnostic result: ${results.class} with ${results.confidence} confidence in short, patient-friendly way. Do not prescribe any drug, only ayurvedic or home remedies. If severe, make them consult specialist doctor.`;
 
     try {
       const response = await axios.post("http://127.0.0.1:8001/generate", { prompt });
@@ -151,6 +179,20 @@ export default function ModelGarden() {
     setUseCamera(useCam);
     setFile(null);
     setFileUrl(null);
+  };
+
+  // Back button handler
+  const handleBack = () => {
+    setSubmitted(false); // Hide results section
+    setResults(null); // Clear results
+    setFile(null); // Clear uploaded file
+    setFileUrl(null); // Clear file URL
+    setAiContent(null); // Clear AI content
+    setActiveTab(null); // Reset active tab
+    if (useCamera) {
+      stopCamera(); // Stop camera if active
+      startCamera(selectedCameraId); // Restart camera if in camera mode
+    }
   };
 
   return (
@@ -200,6 +242,27 @@ export default function ModelGarden() {
               </button>
             </div>
 
+            {/* Camera Selection Dropdown */}
+            {useCamera && (
+              <div>
+                <label htmlFor="camera-select" className="block text-slate-300 font-semibold mb-2">
+                  Select Camera:
+                </label>
+                <select
+                  id="camera-select"
+                  className="w-full p-3 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/10 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={handleCameraChange}
+                  value={selectedCameraId}
+                >
+                  {availableCameras.map((camera) => (
+                    <option key={camera.deviceId} value={camera.deviceId} className="text-gray-800">
+                      {camera.label || `Camera ${camera.deviceId.slice(0, 5)}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* File Upload/Camera Preview */}
             <div className="w-full h-64 border-2 border-dashed border-white/20 rounded-2xl flex flex-col items-center justify-center">
               {!file ? (
@@ -242,7 +305,7 @@ export default function ModelGarden() {
                     onClick={() => {
                       setFile(null);
                       setFileUrl(null);
-                      if (useCamera) startCamera();
+                      if (useCamera) startCamera(selectedCameraId);
                     }}
                   >
                     Clear Image
@@ -268,6 +331,14 @@ export default function ModelGarden() {
           {/* Right Section */}
           {submitted && (
             <div className="space-y-6">
+              {/* Back Button */}
+              <button
+                onClick={handleBack}
+                className="px-6 py-2 bg-gradient-to-r from-blue-500 to-emerald-500 text-white rounded-2xl hover:opacity-90 transition"
+              >
+                Back to Diagnosis
+              </button>
+
               {/* Diagnosis Results */}
               {results && (
                 <div className="p-6 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/10">

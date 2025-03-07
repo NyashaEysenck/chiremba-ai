@@ -45,7 +45,7 @@ export default function Home({ username }) {
 
             {/* Main Heading */}
             <h1 className="text-6xl md:text-7xl font-bold text-white mb-8">
-              Hi {username}, I am your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">AI Doctor</span>
+              Hi {username}, I am your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">AI Health Assistant</span>
             </h1>
 
             {/* Animated Typewriter Text */}
